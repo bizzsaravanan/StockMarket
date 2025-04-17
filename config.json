@@ -1,0 +1,7 @@
+{
+    "Host":"localhost",
+    "Port":"3010",
+    "ContextPath":"/sm",
+    "MongoDBName":"StockMarket",
+    "MongoUrl":"mongodb://localhost:27017"
+}
