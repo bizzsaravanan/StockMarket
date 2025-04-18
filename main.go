@@ -16,6 +16,7 @@ func main() {
 		log.Panic("MOngo Connection failed: ", err)
 	}
 	db.Init()
+	service.RegisterService("StockService", &service.StockService{})
 	service.Connect()
 }
 

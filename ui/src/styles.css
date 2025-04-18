@@ -1,1 +1,93 @@
 /* You can add global styles to this file, and also import other style files */
+table {
+    width: 100%;
+    border-spacing: 0;
+    border-collapse: collapse;
+  }
+
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .button-group button {
+    margin-left: 8px;
+  }
+  
+  
+  h2 {
+    margin-bottom: 16px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .mat-header-cell {
+    background-color: #f4f4f4;
+    font-weight: bold;
+    font-size: 14px;
+    color: #555;
+  }
+  
+  .mat-row:nth-child(even) {
+    background-color: #fafafa;
+  }
+  
+  .mat-row:hover {
+    background-color: #e3f2fd;
+    transition: background-color 0.2s ease-in-out;
+  }
+  
+  .mat-cell {
+    font-size: 13px;
+    color: #333;
+    padding: 8px;
+  }
+  
+  .recommendation-buy {
+    color: green;
+    font-weight: bold;
+  }
+  
+  .recommendation-sell {
+    color: red;
+    font-weight: bold;
+  }
+  
+  .recommendation-hold {
+    color: #666;
+    font-weight: 500;
+  }
+  
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+:host {
+  display: block;
+  padding: 16px;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+button {
+  min-width: 100px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}

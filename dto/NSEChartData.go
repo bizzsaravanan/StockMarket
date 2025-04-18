@@ -7,4 +7,5 @@ type NSEChartResponse struct {
 	H []float64 `json:"h"` // high prices
 	L []float64 `json:"l"` // low prices
 	C []float64 `json:"c"` // close prices
+	V []float64 `json:"v"` // Volume
 }

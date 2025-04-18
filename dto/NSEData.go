@@ -16,4 +16,7 @@ type NSEData struct {
 	SecurityInfo struct {
 		TotalTradedVolume float64 `json:"totalTradedVolume"`
 	} `json:"securityInfo"`
+	Info struct {
+		CompanyName string `json:"companyName"`
+	} `json:"info"`
 }

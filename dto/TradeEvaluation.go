@@ -3,6 +3,7 @@ package dto
 import "time"
 
 type TradeEvaluation struct {
+	Name            string
 	Symbol          string
 	CurrentPrice    float64
 	High5Min        float64
@@ -18,4 +19,8 @@ type TradeEvaluation struct {
 	SellScore       int
 	Recommendation  string
 	EvaluatedAt     time.Time
+	Quantity        float64
+	Charges         float64
+	Profit          float64
+	UpdateCount     float64
 }

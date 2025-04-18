@@ -1,6 +1,8 @@
 package dto
 
 type Request struct {
-	Id   string
-	Name string
+	Id     string  `json:"id"`
+	Name   string  `json:"name"`
+	Amount float64 `json:"amount"`
+	Cookie string  `json:"cookie"`
 }

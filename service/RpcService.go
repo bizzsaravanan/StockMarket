@@ -41,6 +41,7 @@ func Connect() {
 	}
 
 	r.HandleFunc(contextPath+"/api/{service}/{method}", handle)
+	r.HandleFunc("/ws", wsHandler)
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/browser/")))
 
 	srv := &http.Server{
@@ -150,7 +151,7 @@ func handleRpc(rr map[string]interface{}) (resp interface{}, ctx context.Context
 		log.Printf("Ends ServiceName: %s, MethodName: %s, In %d millisecond", rr["ServiceName"], rr["MethodName"], time.Now().String(), time.Now().Sub(requestTime).Seconds()*1000)
 	}
 	if err != nil {
-		resp = "Internal Error"
+		resp = err.Error()
 	}
 	return resp, ctx
 }

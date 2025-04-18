@@ -1,1 +1,131 @@
-<p>home works!</p>
+<div class="p-4">
+    <div class="header-container">
+      <h2>Trade Evaluations</h2>
+      <div class="button-group">
+        <button mat-raised-button color="primary" (click)="openStartDialog()">Start</button>
+        <button mat-stroked-button color="warn" (click)="resetUpdates()">Reset</button>
+      </div>
+    </div>
+  
+    <table mat-table [dataSource]="dataSource" class="mat-elevation-z8" matSort>
+
+      <!-- Name & Symbol Column -->
+      <ng-container matColumnDef="nameSymbol">
+        <th mat-header-cell *matHeaderCellDef> Name / Symbol </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="name-symbol">
+            <div><strong>{{ row.Name }}</strong></div>
+            <div class="text-muted">{{ row.Symbol }}</div>
+          </div>
+        </td>
+      </ng-container>
+    
+      <!-- CurrentPrice, ProfitTarget, Quantity, Charges, Profit Column -->
+      <ng-container matColumnDef="currentStats">
+        <th mat-header-cell *matHeaderCellDef> Current Stats </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="stats">
+            <div><strong>Price:</strong> <span class="text-blue">{{ row.CurrentPrice | number:'1.2-2' }}</span></div>
+            <div><strong>Profit Target:</strong> <span class="text-purple">{{ row.ProfitTarget | number:'1.2-2' }}</span></div>
+            <div><strong>Quantity:</strong> <span class="text-dark">{{ row.Quantity }}</span></div>
+            <div><strong>Charges:</strong> <span class="text-orange">{{ row.Charges | number:'1.2-2' }}</span></div>
+            <div>
+              <strong>Profit:</strong>
+              <span [ngClass]="row.Profit >= 0 ? 'text-green' : 'text-red'">
+                {{ row.Profit | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>          
+        </td>
+      </ng-container>
+    
+      <!-- Recommendation, BuyScore, SellScore Column -->
+      <ng-container matColumnDef="recommendationStats">
+        <th mat-header-cell *matHeaderCellDef> Recommendation </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="recommendation-info">
+            <div 
+              class="recommendation-label"
+              [ngClass]="{
+                'recommendation-buy': row.Recommendation === 'Buy' || row.Recommendation === 'Strong Buy',
+                'recommendation-sell': row.Recommendation === 'Sell' || row.Recommendation === 'Strong Sell',
+                'recommendation-hold': row.Recommendation === 'HOLD'
+              }">
+              {{ row.Recommendation }}
+            </div>
+            <div class="scores">
+              <span class="buy-score">Buy: {{ row.BuyScore }}</span>
+              <span class="sell-score">Sell: {{ row.SellScore }}</span>
+            </div>
+          </div>
+        </td>
+      </ng-container>
+    
+      <!-- Table Rows -->
+      <tr mat-header-row *matHeaderRowDef="['nameSymbol', 'currentStats', 'recommendationStats']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['nameSymbol', 'currentStats', 'recommendationStats'];"></tr>
+    </table>
+
+    <h2>Trade Avoid Evaluations</h2>
+
+    <table mat-table [dataSource]="adataSource" class="mat-elevation-z8" matSort>
+
+      <!-- Name & Symbol Column -->
+      <ng-container matColumnDef="nameSymbol">
+        <th mat-header-cell *matHeaderCellDef> Name / Symbol </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="name-symbol">
+            <div><strong>{{ row.Name }}</strong></div>
+            <div class="text-muted">{{ row.Symbol }}</div>
+          </div>
+        </td>
+      </ng-container>
+    
+      <!-- CurrentPrice, ProfitTarget, Quantity, Charges, Profit Column -->
+      <ng-container matColumnDef="currentStats">
+        <th mat-header-cell *matHeaderCellDef> Current Stats </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="stats">
+            <div><strong>Price:</strong> <span class="text-blue">{{ row.CurrentPrice | number:'1.2-2' }}</span></div>
+            <div><strong>Profit Target:</strong> <span class="text-purple">{{ row.ProfitTarget | number:'1.2-2' }}</span></div>
+            <div><strong>Quantity:</strong> <span class="text-dark">{{ row.Quantity }}</span></div>
+            <div><strong>Charges:</strong> <span class="text-orange">{{ row.Charges | number:'1.2-2' }}</span></div>
+            <div>
+              <strong>Profit:</strong>
+              <span [ngClass]="row.Profit >= 0 ? 'text-green' : 'text-red'">
+                {{ row.Profit | number:'1.2-2' }}
+              </span>
+            </div>
+          </div>          
+        </td>
+      </ng-container>
+    
+      <!-- Recommendation, BuyScore, SellScore Column -->
+      <ng-container matColumnDef="recommendationStats">
+        <th mat-header-cell *matHeaderCellDef> Recommendation </th>
+        <td mat-cell *matCellDef="let row">
+          <div class="recommendation-info">
+            <div 
+              class="recommendation-label"
+              [ngClass]="{
+                'recommendation-buy': row.Recommendation === 'Buy' || row.Recommendation === 'Strong Buy',
+                'recommendation-sell': row.Recommendation === 'Sell' || row.Recommendation === 'Strong Sell',
+                'recommendation-hold': row.Recommendation === 'HOLD'
+              }">
+              {{ row.Recommendation }}
+            </div>
+            <div class="scores">
+              <span class="buy-score">Buy: {{ row.BuyScore }}</span>
+              <span class="sell-score">Sell: {{ row.SellScore }}</span>
+            </div>
+          </div>
+        </td>
+      </ng-container>
+    
+      <!-- Table Rows -->
+      <tr mat-header-row *matHeaderRowDef="['nameSymbol', 'currentStats', 'recommendationStats']"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['nameSymbol', 'currentStats', 'recommendationStats'];"></tr>
+    </table>
+    
+  </div>
+  
