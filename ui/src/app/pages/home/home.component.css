@@ -98,3 +98,27 @@
     font-weight: 600;
   }
   
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem;
+  }
+  
+  .header-title-group {
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+  }
+  .amount {
+    font-size: 1.2rem;
+    font-weight: 500;
+  }
+  
+  
+  .button-group {
+    display: flex;
+    gap: 0.5rem;
+  }
+  

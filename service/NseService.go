@@ -40,13 +40,15 @@ func refreshNSECookies() string {
 }
 
 func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*dto.Response, error) {
-	nseCookie = request.Cookie
+	if request.Cookie != "" {
+		nseCookie = request.Cookie
+	}
 	stockName := request.Name
 	data, err := fetchNSEQuote(stockName)
 	if err != nil {
 		return nil, err
 	}
-	closes, volumes, currVolume, err := fetchNSEChart(stockName)
+	closes, volumes, _, _, currVolume, err := fetchNSEChart(stockName, "5", -6, false)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +69,8 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 	recommendation := getRecommendation(buyScore, sellScore)
 
 	fmt.Printf("Buy Score: %d, Sell Score: %d, Trade Recommendation: %s\n", buyScore, sellScore, recommendation)
+
+	currentStatus := Evaluate1MinContinuation(stockName, recommendation)
 
 	capital := request.Amount
 	marginMultiplier := 4.9
@@ -102,20 +106,27 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 		BuyScore:        buyScore,
 		SellScore:       sellScore,
 		Recommendation:  recommendation,
+		CurrentStatus:   currentStatus,
 		Quantity:        quantity,
 		Charges:         charges,
 		Profit:          netProfit,
 		EvaluatedAt:     time.Now().In(time.FixedZone("IST", 5*60*60+30*60)),
 	}
 	err = db.DB.FindAndUpdate(
-		evaluation,
+		&dto.TradeEvaluation{},
 		db.M{"symbol": stockName},
-		db.M{"$set": evaluation},
+		db.M{
+			"$set": evaluation,
+		},
 		options.FindOneAndUpdate().SetUpsert(true),
 	)
 	if err != nil {
 		log.Println("DB error", err)
 	}
+	/* err = db.DB.UpdateOne(&dto.TradeEvaluation{}, db.M{"symbol": stockName}, db.M{"$inc": db.M{"updateCount": 1}})
+	if err != nil {
+		log.Println("DB update error", err)
+	} */
 	return nil, nil
 }
 
@@ -206,13 +217,13 @@ func fetchNSEQuote(stockName string) (*dto.NSEData, error) {
 	return &result, nil
 }
 
-func fetchNSEChart(stockName string) ([]float64, []float64, float64, error) {
+func fetchNSEChart(stockName, minute string, days int, isHigh bool) ([]float64, []float64, []float64, []float64, float64, error) {
 	// TODO: need fix date based on holiday
 	// Current time in IST
 	ist := time.FixedZone("IST", 5*60*60+30*60)
 	nowIST := time.Now().In(ist)
 	toDate := nowIST.Unix() // in seconds
-	fromDate := nowIST.AddDate(0, 0, -7).Unix()
+	fromDate := nowIST.AddDate(0, 0, days).Unix()
 
 	// Convert to strings if needed
 	fromDateStr := strconv.FormatInt(fromDate, 10)
@@ -223,7 +234,7 @@ func fetchNSEChart(stockName string) ([]float64, []float64, float64, error) {
 		"tradingSymbol": "` + stockName + `-EQ",
 		"fromDate": ` + fromDateStr + `,
 		"toDate": ` + toDateStr + `,
-		"timeInterval": 5,
+		"timeInterval": ` + minute + `,
 		"chartPeriod": "I",
 		"chartStart": 0
 	}`)
@@ -247,7 +258,7 @@ func fetchNSEChart(stockName string) ([]float64, []float64, float64, error) {
 	client := &http.Client{}
 	resp, err := retryRequest(client, req)
 	if err != nil {
-		return nil, nil, 0.0, err
+		return nil, nil, nil, nil, 0.0, err
 	}
 	defer resp.Body.Close()
 
@@ -256,11 +267,16 @@ func fetchNSEChart(stockName string) ([]float64, []float64, float64, error) {
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Println("Chart unmarshal error:", err)
 		log.Println("Raw response:", string(body))
-		return nil, nil, 0.0, err
+		return nil, nil, nil, nil, 0.0, err
 	}
 	closes, _ := GetLast14DescendingCloses(result.C)
 	volume, currentVolume := GetLast14DescendingCloses(result.V)
-	return closes, volume, currentVolume, nil
+	if isHigh {
+		h, _ := GetLast14DescendingCloses(result.H)
+		l, _ := GetLast14DescendingCloses(result.L)
+		return closes, volume, h, l, currentVolume, nil
+	}
+	return closes, volume, nil, nil, currentVolume, nil
 }
 
 func CalculateRSI(closes []float64, period int) float64 {
@@ -385,4 +401,41 @@ func calculateRsi(closes []float64, period int) float64 {
 	rs := avgGain / avgLoss
 	rsi := 100 - (100 / (1 + rs))
 	return rsi
+}
+
+func Evaluate1MinContinuation(stockName, direction string) string {
+	closes, _, high, low, _, err := fetchNSEChart(stockName, "1", -5, true)
+
+	if err != nil || len(closes) < 2 || len(high) < 2 || len(low) < 2 {
+		return "HOLD"
+	}
+
+	latestC := closes[len(closes)-1]
+	prevH := high[len(high)-2]
+	prevL := low[len(low)-2]
+
+	switch direction {
+	case "Buy", "Strong Buy":
+		if latestC > prevH {
+			return "BUY" // strong continuation
+		} else if latestC < prevL {
+			return "SELL" // reversal signal
+		}
+	case "Sell", "Strong Sell":
+		if latestC < prevL {
+			return "SELL"
+		} else if latestC > prevH {
+			return "BUY"
+		}
+	}
+	return "HOLD"
+}
+
+type Candle struct {
+	Time   time.Time
+	Open   float64
+	High   float64
+	Low    float64
+	Close  float64
+	Volume int
 }

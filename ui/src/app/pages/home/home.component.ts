@@ -10,7 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { WsService } from '../ws.service';
 import { Subscription } from 'rxjs';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule  } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -28,25 +28,24 @@ import { FormsModule } from '@angular/forms';
     MatButtonModule,
     CommonModule,
     MatButtonModule,
+    FormsModule,
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
 export class HomeComponent implements OnInit {
-  displayedColumns: string[] = ['nameSymbol', 'currentStats', 'recommendationStats'];
+  displayedColumns: string[] = ['nameSymbol', 'currentStats', 'recommendationStats', 'currentStatus'];
 
   dataSource: any = [];
   adataSource: any = [];
   private wsSub?: Subscription;
+  amount: any = 0
+  searchQuery: any = ""
 
   constructor(private tradeService: TradeEvaluationService, private wsService: WsService, private dialog: MatDialog) { }
 
   ngOnInit(): void {
     console.log("starting")
-    this.wsSub = this.wsService.getUpdates().subscribe(data => {
-      this.dataSource = data.tradeEvaluation;
-      this.adataSource = data.atradeEvaluation;
-    });
   }
 
   openStartDialog() {
@@ -58,10 +57,22 @@ export class HomeComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         // Call your API with result.amount and result.cookie
+        this.wsSub = this.wsService.getUpdates().subscribe(data => {
+          this.dataSource = data.tradeEvaluation;
+          this.adataSource = data.atradeEvaluation;
+        });
+        this.amount = result.amount
         this.tradeService.getEvaluations(result, "Start").subscribe((data: any) => {
           this.dataSource = []
         });
       }
+    });
+  }
+
+  search() {
+    var result = { amount: this.amount, name: this.searchQuery }
+    this.tradeService.getEvaluations(result, "Start").subscribe((data: any) => {
+      this.searchQuery = ""
     });
   }
 
@@ -72,6 +83,13 @@ export class HomeComponent implements OnInit {
   }
 
   resetUpdates() {
+    this.tradeService.getEvaluations({}, "Reset").subscribe((data: any) => {
+      this.searchQuery = ""
+      this.dataSource = [];
+      this.wsSub?.unsubscribe();
+    });
+  }
+  refresh() {
     this.dataSource = [];
   }
 
@@ -98,7 +116,7 @@ export class StartDialogComponent {
   amount: number = 0;
   cookie: string = '';
 
-  constructor(public dialogRef: MatDialogRef<StartDialogComponent>) {}
+  constructor(public dialogRef: MatDialogRef<StartDialogComponent>) { }
 
   onSubmit(): void {
     const data = { amount: this.amount, cookie: this.cookie };

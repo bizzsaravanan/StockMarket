@@ -18,9 +18,10 @@ type TradeEvaluation struct {
 	BuyScore        int
 	SellScore       int
 	Recommendation  string
+	CurrentStatus   string
 	EvaluatedAt     time.Time
 	Quantity        float64
 	Charges         float64
 	Profit          float64
-	UpdateCount     float64
+	UpdateCount     int `bson:"updateCount" json:"updateCount,omitempty"`
 }
