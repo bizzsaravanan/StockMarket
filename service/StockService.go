@@ -53,7 +53,7 @@ func (a *StockService) Start(ctx context.Context, request *dto.Request) (*dto.Re
 		return &dto.Response{Message: "started"}, nil
 	}
 	go func() {
-		ticker := time.NewTicker(30 * time.Second) // run every 15s (you can adjust)
+		ticker := time.NewTicker(20 * time.Second) // run every 15s (you can adjust)
 		defer ticker.Stop()
 
 		for {
@@ -69,14 +69,27 @@ func (a *StockService) Start(ctx context.Context, request *dto.Request) (*dto.Re
 				res, err := chartinkService.CreateStockData(ctx, &dto.Request{})
 				if err != nil || res == nil || res.ChartinkResponse == nil {
 					log.Println("ChartinkService failed:", err)
-					return
+				}
+
+				var tradeEvaluation []*dto.TradeEvaluation
+				err = db.DB.FindAllPagination(&tradeEvaluation, nil, db.M{"profit": -1}, 0, 0)
+				if err != nil {
+					log.Println("tradeEvaluation not found start")
+				}
+
+				m := make(map[string]string)
+
+				for _, d := range tradeEvaluation {
+					m[d.Symbol] = "DB"
 				}
 
 				for _, data := range res.ChartinkResponse.Data {
+					m[data.NSECode] = "CHART_INK"
+				}
+				for d, o := range m {
 					nseService := &NseService{}
-					if _, err := nseService.EvaluateStock(ctx, &dto.Request{Name: data.NSECode, Amount: request.Amount, Cookie: request.Cookie}); err != nil {
-						log.Printf("Error evaluating stock %s: %v\n", data.NSECode, err)
-						return
+					if _, err := nseService.EvaluateStock(ctx, &dto.Request{Name: d, Amount: request.Amount, Cookie: request.Cookie, Origin: o}); err != nil {
+						log.Printf("Error evaluating stock %s: %v\n", d, err)
 					}
 				}
 

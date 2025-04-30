@@ -67,8 +67,11 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 	stopLoss := supportLevel
 	buyScore, sellScore := calculateScores(rsi, currentPrice, avgPrice, currVolume, avgVolume)
 	recommendation := getRecommendation(buyScore, sellScore)
+	if currentPrice < 100 {
+		recommendation = "Avoid"
+	}
 
-	fmt.Printf("Buy Score: %d, Sell Score: %d, Trade Recommendation: %s\n", buyScore, sellScore, recommendation)
+	fmt.Printf("StockName: %s, Buy Score: %d, Sell Score: %d, Trade Recommendation: %s\n", stockName, buyScore, sellScore, recommendation)
 
 	currentStatus := Evaluate1MinContinuation(stockName, recommendation)
 
@@ -89,6 +92,13 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 
 	// Net profit after deducting charges
 	netProfit := math.Round((grossProfit-charges)*100) / 100
+
+	var tradeEvaluation *dto.TradeEvaluation
+	db.DB.FindOne(&tradeEvaluation, db.M{"symbol": stockName})
+	isNew := true
+	if tradeEvaluation != nil {
+		isNew = false
+	}
 
 	evaluation := &dto.TradeEvaluation{
 		Name:            data.Info.CompanyName,
@@ -111,6 +121,8 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 		Charges:         charges,
 		Profit:          netProfit,
 		EvaluatedAt:     time.Now().In(time.FixedZone("IST", 5*60*60+30*60)),
+		IsNew:           isNew,
+		Origin:          request.Origin,
 	}
 	err = db.DB.FindAndUpdate(
 		&dto.TradeEvaluation{},
@@ -123,37 +135,53 @@ func (s *NseService) EvaluateStock(ctx context.Context, request *dto.Request) (*
 	if err != nil {
 		log.Println("DB error", err)
 	}
-	/* err = db.DB.UpdateOne(&dto.TradeEvaluation{}, db.M{"symbol": stockName}, db.M{"$inc": db.M{"updateCount": 1}})
-	if err != nil {
-		log.Println("DB update error", err)
-	} */
 	return nil, nil
 }
 
-func calculateGrowwIntradayCharges(bprice, sprice float64, quantity float64, recommendation string) float64 {
+func calculateGrowwIntradayCharges(bprice, sprice, quantity float64, recommendation string) float64 {
 	buyPrice := bprice
 	sellPrice := sprice
+
 	if recommendation == "Sell" || recommendation == "Strong Sell" {
 		buyPrice = sprice
 		sellPrice = bprice
 	}
+
 	buyTurnover := buyPrice * quantity
 	sellTurnover := sellPrice * quantity
 	turnover := buyTurnover + sellTurnover
 
-	// Brokerage fixed as per Groww
-	brokerage := 8.95
+	// Brokerage: 0.1% per side or ₹20 max, ₹2 min
+	calcBrokerage := func(turnover float64) float64 {
+		charge := 0.001 * turnover
+		if charge < 2 {
+			return 2
+		}
+		if charge > 20 {
+			return 20
+		}
+		return charge
+	}
+	brokerage := calcBrokerage(buyTurnover) + calcBrokerage(sellTurnover)
 
-	// Govt Charges
-	stt := 0.00025 * sellTurnover // Only on sell side
-	exchangeTxn := 0.0000345 * turnover
+	// STT on sell side only
+	stt := 0.00025 * sellTurnover
+
+	// Stamp duty on buy side only
+	stampDuty := 0.00003 * buyTurnover
+
+	// Exchange txn charges (NSE)
+	exchangeTxn := 0.0000297 * turnover
+
+	// SEBI & IPFT charges
 	sebi := 0.000001 * turnover
-	stampDuty := 0.00003 * buyTurnover // Only on buy side
-	gst := 0.18 * brokerage
+	ipft := 0.000001 * turnover
 
-	totalCharges := brokerage + stt + exchangeTxn + sebi + stampDuty + gst
+	// GST on (brokerage + exchangeTxn + sebi + ipft)
+	gst := 0.18 * (brokerage + exchangeTxn + sebi + ipft)
 
-	// Round to 2 decimal places
+	totalCharges := brokerage + stt + stampDuty + exchangeTxn + sebi + ipft + gst
+
 	return math.Round(totalCharges*100) / 100
 }
 

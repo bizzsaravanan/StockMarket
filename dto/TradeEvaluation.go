@@ -23,5 +23,6 @@ type TradeEvaluation struct {
 	Quantity        float64
 	Charges         float64
 	Profit          float64
-	UpdateCount     int `bson:"updateCount" json:"updateCount,omitempty"`
+	IsNew           bool
+	Origin          string
 }

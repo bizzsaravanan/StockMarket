@@ -91,6 +91,10 @@ export class HomeComponent implements OnInit {
   }
   refresh() {
     this.dataSource = [];
+    this.wsSub = this.wsService.getUpdates().subscribe(data => {
+      this.dataSource = data.tradeEvaluation;
+      this.adataSource = data.atradeEvaluation;
+    });
   }
 
   ngOnDestroy(): void {

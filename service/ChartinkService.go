@@ -69,9 +69,6 @@ func (s *ChartinkService) CreateStockData(ctx context.Context, request *dto.Requ
 
 	postBody, _ := ioutil.ReadAll(postResp.Body)
 
-	fmt.Println("Status:", postResp.Status)
-	fmt.Println("Body:", string(postBody))
-
 	var result *dto.ChartinkResponse
 	err = json.Unmarshal(postBody, &result)
 	if err != nil {
