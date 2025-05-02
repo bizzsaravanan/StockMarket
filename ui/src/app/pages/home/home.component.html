@@ -102,6 +102,8 @@
         <div class="name-symbol">
           <div><strong>{{ row.Name }}</strong></div>
           <div class="text-muted">{{ row.Symbol }}</div>
+          <div><strong>Origin:</strong> <span class="text-orange">{{ row.Origin }}</span></div>
+          <span [ngClass]="row.IsNew ? 'text-green' : 'text-orange'">{{ row.IsNew ? 'NEW' : 'OLD' }}</span>
         </div>
       </td>
     </ng-container>

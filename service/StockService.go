@@ -86,6 +86,7 @@ func (a *StockService) Start(ctx context.Context, request *dto.Request) (*dto.Re
 				for _, data := range res.ChartinkResponse.Data {
 					m[data.NSECode] = "CHART_INK"
 				}
+				log.Println("m", m)
 				for d, o := range m {
 					nseService := &NseService{}
 					if _, err := nseService.EvaluateStock(ctx, &dto.Request{Name: d, Amount: request.Amount, Cookie: request.Cookie, Origin: o}); err != nil {

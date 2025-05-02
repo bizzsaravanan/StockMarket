@@ -11,7 +11,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -21,6 +20,7 @@ type NseService struct{}
 
 const (
 	nseBaseURL         = "https://www.nseindia.com"
+	nsechartBaseURL    = "https://charting.nseindia.com"
 	nseQuoteURL        = "https://www.nseindia.com/api/quote-equity?symbol=%s"
 	nseChartURL        = "https://charting.nseindia.com//Charts/ChartData/"
 	userAgent          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
@@ -248,31 +248,35 @@ func fetchNSEQuote(stockName string) (*dto.NSEData, error) {
 func fetchNSEChart(stockName, minute string, days int, isHigh bool) ([]float64, []float64, []float64, []float64, float64, error) {
 	// TODO: need fix date based on holiday
 	// Current time in IST
-	ist := time.FixedZone("IST", 5*60*60+30*60)
-	nowIST := time.Now().In(ist)
-	toDate := nowIST.Unix() // in seconds
-	fromDate := nowIST.AddDate(0, 0, days).Unix()
+	// Define IST timezone
+	nowIST := time.Now().UTC()
 
-	// Convert to strings if needed
-	fromDateStr := strconv.FormatInt(fromDate, 10)
-	toDateStr := strconv.FormatInt(toDate, 10)
+	toDate := nowIST.AddDate(0, 0, 1).Unix()      // current time in seconds
+	fromDate := nowIST.AddDate(0, 0, days).Unix() // days offset
 
-	payload := []byte(`{
-		"exch": "N",
-		"tradingSymbol": "` + stockName + `-EQ",
-		"fromDate": ` + fromDateStr + `,
-		"toDate": ` + toDateStr + `,
-		"timeInterval": ` + minute + `,
-		"chartPeriod": "I",
-		"chartStart": 0
-	}`)
+	// Build JSON payload
+	payload := map[string]interface{}{
+		"exch":          "N",
+		"tradingSymbol": stockName + "-EQ",
+		"fromDate":      fromDate,
+		"toDate":        toDate,
+		"timeInterval":  minute,
+		"chartPeriod":   "I",
+		"chartStart":    0,
+	}
 
-	req, err := http.NewRequest("POST", nseChartURL, bytes.NewBuffer(payload))
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Payload marshal error:", err)
+		return nil, nil, nil, nil, 0.0, err
+	}
+
+	req, err := http.NewRequest("POST", nseChartURL, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		fmt.Println("Request error:", err)
 	}
 	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Referer", nseBaseURL)
+	req.Header.Set("Referer", nsechartBaseURL)
 	req.Header.Set("Cookie", nseCookie)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
@@ -283,6 +287,7 @@ func fetchNSEChart(stockName, minute string, days int, isHigh bool) ([]float64, 
 	req.Header.Set("Sec-Fetch-User", "?1")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", nsechartBaseURL)
 	client := &http.Client{}
 	resp, err := retryRequest(client, req)
 	if err != nil {
@@ -401,6 +406,9 @@ func GetLast14DescendingCloses(closePrices []float64) ([]float64, float64) {
 		start = 0
 	}
 	last20 := closePrices[start:]
+	for i, j := 0, len(last20)-1; i < j; i, j = i+1, j-1 {
+		last20[i], last20[j] = last20[j], last20[i]
+	}
 	return last20, last20[0]
 }
 
@@ -432,30 +440,37 @@ func calculateRsi(closes []float64, period int) float64 {
 }
 
 func Evaluate1MinContinuation(stockName, direction string) string {
-	closes, _, high, low, _, err := fetchNSEChart(stockName, "1", -5, true)
+	// Fetch last 5 minutes of 1-min chart data
+	closes, _, highs, lows, _, err := fetchNSEChart(stockName, "1", -5, true)
 
-	if err != nil || len(closes) < 2 || len(high) < 2 || len(low) < 2 {
+	if err != nil || len(closes) < 2 || len(highs) < 2 || len(lows) < 2 {
+		log.Println("Insufficient data or error fetching chart:", err)
 		return "HOLD"
 	}
 
+	// Ensure data consistency
 	latestC := closes[len(closes)-1]
-	prevH := high[len(high)-2]
-	prevL := low[len(low)-2]
+	prevH := highs[len(highs)-2]
+	prevL := lows[len(lows)-2]
+
+	// Small buffer to reduce false HOLDs due to minor fluctuations
+	buffer := 0.001 // 0.1%
 
 	switch direction {
 	case "Buy", "Strong Buy":
-		if latestC > prevH {
-			return "BUY" // strong continuation
-		} else if latestC < prevL {
-			return "SELL" // reversal signal
+		if latestC > prevH*(1+buffer) {
+			return "BUY" // breakout above previous high
+		} else if latestC < prevL*(1-buffer) {
+			return "SELL" // strong reversal signal
 		}
 	case "Sell", "Strong Sell":
-		if latestC < prevL {
-			return "SELL"
-		} else if latestC > prevH {
-			return "BUY"
+		if latestC < prevL*(1-buffer) {
+			return "SELL" // breakdown below previous low
+		} else if latestC > prevH*(1+buffer) {
+			return "BUY" // reversal
 		}
 	}
+
 	return "HOLD"
 }
 
