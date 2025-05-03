@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 )
@@ -38,11 +37,7 @@ func (s *ChartinkService) CreateStockData(ctx context.Context, request *dto.Requ
 	}
 	csrfToken := matches[1]
 
-	form := url.Values{}
-	form.Set("scan_clause", `( {cash} ( [0] 5 minute close > [-1] 5 minute max( 20 , [0] 5 minute close ) and [0] 5 minute volume > [0] 5 minute sma( volume,20 ) and latest volume > 1000000 ) )`)
-	form.Set("debug_clause", `groupcount( 1 where [0] 5 minute close > [-1] 5 minute max( 20 , [0] 5 minute close )),groupcount( 1 where [0] 5 minute volume > [0] 5 minute sma( volume,20 )),groupcount( 1 where daily volume > 1000000)`)
-
-	postReq, err := http.NewRequest("POST", "https://chartink.com/screener/process", strings.NewReader(form.Encode()))
+	postReq, err := http.NewRequest("POST", "https://chartink.com/screener/process", strings.NewReader(request.FormData.Encode()))
 	if err != nil {
 		fmt.Println("CSRF token not found")
 		return nil, err
